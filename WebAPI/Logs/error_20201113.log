@@ -1,0 +1,22 @@
+----------------------------------------------------------------------
+Error in         : api/technology/updatetechnology
+Time             : 2020/26/13  03:26:28
+Version          : 1.0.0.0
+OS               : Microsoft Windows 10.0.18363
+Module           : <UpdateAsync>d__3
+Procedure        : MoveNext
+Error Number     : 500
+Error Description: The UPDATE statement conflicted with the FOREIGN KEY constraint "FK_Technology_Category_CategoryId". The conflict occurred in database "HumanResources", table "dbo.Category", column 'Id'.
+The statement has been terminated.
+
+----------------------------------------------------------------------
+Error in         : api/skill/insertskill
+Time             : 2020/48/13  03:48:33
+Version          : 1.0.0.0
+OS               : Microsoft Windows 10.0.18363
+Module           : <InsertPersonCategoryAsync>d__3
+Procedure        : MoveNext
+Error Number     : 500
+Error Description: The INSERT statement conflicted with the FOREIGN KEY constraint "FK_PersonCategory_Category_CategoryId". The conflict occurred in database "HumanResources", table "dbo.Category", column 'Id'.
+The statement has been terminated.
+

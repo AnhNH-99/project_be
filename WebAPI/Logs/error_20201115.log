@@ -1,0 +1,40 @@
+----------------------------------------------------------------------
+Error in         : api/skill/getskill/1
+Time             : 2020/59/15  09:59:39
+Version          : 1.0.0.0
+OS               : Microsoft Windows 10.0.19041
+Module           : <GetSkillByPersonAsync>d__1
+Procedure        : MoveNext
+Error Number     : 500
+Error Description: Incorrect syntax near '.'.
+
+----------------------------------------------------------------------
+Error in         : api/skill/getskilbycategory
+Time             : 2020/03/15  10:03:37
+Version          : 1.0.0.0
+OS               : Microsoft Windows 10.0.19041
+Module           : <GetSkilByCategoryAsync>d__13
+Procedure        : MoveNext
+Error Number     : 500
+Error Description: Column 'Technology.CategoryId' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
+
+----------------------------------------------------------------------
+Error in         : api/skill/insertskill
+Time             : 2020/06/15  10:06:35
+Version          : 1.0.0.0
+OS               : Microsoft Windows 10.0.19041
+Module           : <CheckPersonTechnologyAsync>d__7
+Procedure        : MoveNext
+Error Number     : 500
+Error Description: Incorrect syntax near '='.
+
+----------------------------------------------------------------------
+Error in         : api/skill/updateSkill
+Time             : 2020/12/15  10:12:20
+Version          : 1.0.0.0
+OS               : Microsoft Windows 10.0.19041
+Module           : <DeletePersonTechnologyToUpdateAsync>d__10
+Procedure        : MoveNext
+Error Number     : 500
+Error Description: The member PersonId of type WebAPI.Models.PersonCategory cannot be used as a parameter value
+
