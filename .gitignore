@@ -1,0 +1,6 @@
+*.suo
+.vs/
+*.exe
+.git/
+bin/
+obj/
