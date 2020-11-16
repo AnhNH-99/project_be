@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -42,7 +43,8 @@ namespace WebAPI.Controllers
                     var listTechnology = GetListTechnology(list);
                     var listWorkHistory = GetListWorkHistory(list);
                     var listEducation = GetListEducation(list);
-                    return Ok(listEducation);
+                    var listCertificate = GetListCertifiate(list);
+                    return Ok(listCertificate);
                 }
             }
         }
@@ -58,7 +60,7 @@ namespace WebAPI.Controllers
             {
                 FullName = list[1],
                 Gender = FormatGender(list[3]),
-                YearOfBirth = FormatYearOfBirth(list[5].Trim()),
+                YearOfBirth = FormatYear(list[5]).FirstOrDefault(),
                 Description = list[7]
             };
             return person;
@@ -90,57 +92,6 @@ namespace WebAPI.Controllers
                 }
             }
             return (Constants.Constant.eGender)gerder;
-        }
-
-        /// <summary>
-        /// Format Year Of Birth
-        /// </summary>
-        /// <param name="yearOfBirthStr"></param>
-        /// <returns></returns>
-        private DateTime FormatYearOfBirth(string yearOfBirthStr)
-        {
-            DateTime yearOfBirth = new DateTime();
-            if (!String.IsNullOrEmpty(yearOfBirthStr))
-            {
-                if (yearOfBirthStr.Contains("-"))
-                {
-                    int x = 0;
-                    for (int i = 0; i < yearOfBirthStr.Length; i++)
-                    {
-                        if (yearOfBirthStr[i].Equals("-"))
-                        {
-                            x++;
-                        }
-                    }
-                    if (x == 1)
-                    {
-                        String[] arrListStr = yearOfBirthStr.Split('-');
-                        if (!String.IsNullOrEmpty(arrListStr[0]) && !String.IsNullOrEmpty(arrListStr[1]))
-                        {
-                            int month = Convert.ToInt32(arrListStr[0]);
-                            int year = Convert.ToInt32(arrListStr[1]);
-                            yearOfBirth = new DateTime(year, month, 01);
-                        }
-                    }
-                    else if (x == 2)
-                    {
-                        String[] arrListStr = yearOfBirthStr.Split('-');
-                        if (!String.IsNullOrEmpty(arrListStr[0]) && !String.IsNullOrEmpty(arrListStr[1]) && !String.IsNullOrEmpty(arrListStr[2]))
-                        {
-                            int day = Convert.ToInt32(arrListStr[0]);
-                            int month = Convert.ToInt32(arrListStr[1]);
-                            int year = Convert.ToInt32(arrListStr[2]);
-                            yearOfBirth = new DateTime(year, month, day);
-                        }
-                    }
-                }
-                else
-                {
-                    int year = Convert.ToInt32(yearOfBirthStr);
-                    yearOfBirth = new DateTime(year, 01, 01);
-                }
-            }
-            return yearOfBirth;
         }
         #endregion
         #region Xu Ly Skill
@@ -229,22 +180,168 @@ namespace WebAPI.Controllers
             List<WorkHistoryInfo> listWorkHistory = new List<WorkHistoryInfo>();
             int indexWorkHistory = list.IndexOf("WORKING HISTORY");
             int indexEducation = list.IndexOf("EDUCATION");
-            for (int i = indexWorkHistory + 4; i < indexEducation-4; i = i + 4)
+            for (int i = indexWorkHistory + 4; i < indexEducation - 4; i = i + 4)
             {
                 WorkHistoryInfo workHistoryInfo = new WorkHistoryInfo
                 {
-                    OrderIndex = Convert.ToInt32(list[i+1]),
-                    StartDate = FormatStartDateWorkHistory(list[i+2]),
-                    EndDate = FormatEndDateWorkHistory(list[i+2]),
+                    OrderIndex = Convert.ToInt32(list[i + 1]),
+                    StartDate = FormatYearAndMonth(list[i + 2])[1],
+                    EndDate = FormatYearAndMonth(list[i + 2])[0],
                     CompanyName = list[i + 3],
                     Position = list[i + 4]
                 };
                 listWorkHistory.Add(workHistoryInfo);
             }
             return listWorkHistory;
-            
+
         }
-         
+        #endregion
+        #region Xu Ly Education
+        private List<EducationInfo> GetListEducation(List<string> list)
+        {
+            List<EducationInfo> listEducation = new List<EducationInfo>();
+            int indexEducation = list.IndexOf("EDUCATION");
+            int indexCertificate = list.IndexOf("CERTIFICATION");
+            for (int i = indexEducation; i < indexCertificate - 2; i = i + 2)
+            {
+                EducationInfo educationInfo = new EducationInfo();
+                string dateEducation = GetDate(list[i + 1]);
+                if (FormatYear(dateEducation).Count > 1)
+                {
+                    educationInfo = new EducationInfo
+                    {
+                        StartDate = FormatYear(dateEducation)[1],
+                        EndDate = FormatYear(dateEducation)[0],
+                        CollegeName = GetCollegeName(list[i + 1]),
+                        Major = GetMajorEducation(list[i + 2])
+                    };
+                }
+                else
+                {
+                    educationInfo = new EducationInfo
+                    {
+                        StartDate = FormatYear(dateEducation)[0],
+                        EndDate = null,
+                        CollegeName = GetCollegeName(list[i + 1]),
+                        Major = GetMajorEducation(list[i + 2])
+                    };
+                }
+                listEducation.Add(educationInfo);
+            }
+            return listEducation;
+        }
+
+        private string GetCollegeName(string str)
+        {
+            string result = null;
+            if (!String.IsNullOrEmpty(str))
+            {
+                if (str.Contains("|"))
+                {
+                    string[] arrStr = str.Split("|");
+                    if (arrStr != null && arrStr.Length > 1)
+                    {
+                        result = arrStr[1].Trim();
+                    }
+                }
+            }
+            return result;
+        }
+
+        private string GetMajorEducation(string str)
+        {
+            string result = null;
+            if (!String.IsNullOrEmpty(str))
+            {
+                if (str.Contains(":"))
+                {
+                    string[] arrStr = str.Split(":");
+                    if (arrStr != null && arrStr.Length > 1)
+                    {
+                        result = arrStr[1].Trim();
+                    }
+                }
+            }
+            return result;
+        }
+        #endregion
+        #region Xu ly Certification
+        private List<CertificateInfo> GetListCertifiate(List<string> list)
+        {
+            List<CertificateInfo> listCertificate = new List<CertificateInfo>();
+            int indexCertificate = list.IndexOf("CERTIFICATION");
+            int indexProject = list.IndexOf("PROJECTS");
+            for (int i = indexCertificate+1; i < indexProject; i++)
+            {
+                CertificateInfo certificateInfo = new CertificateInfo();
+                string certificateStr = list[i];
+                string dateCertificate = GetDate(certificateStr);
+                if (FormatYear(dateCertificate).Count > 1)
+                {
+                    certificateInfo = new CertificateInfo
+                    {
+                        StartDate = FormatYear(dateCertificate)[1],
+                        EndDate = FormatYear(dateCertificate)[0],
+                        Name = GetNameAndProviderCertifiate(certificateStr)["Name"].ToString(),
+                        Provider = GetNameAndProviderCertifiate(certificateStr)["Provider"].ToString()
+                    };
+                }
+                else
+                {
+                    certificateInfo = new CertificateInfo
+                    {
+                        StartDate = FormatYear(dateCertificate).FirstOrDefault(),
+                        EndDate = null,
+                        Name = GetNameAndProviderCertifiate(certificateStr)["Name"].ToString(),
+                        Provider = GetNameAndProviderCertifiate(certificateStr)["Provider"].ToString()
+                    };
+                }
+              listCertificate.Add(certificateInfo);
+            }
+            return listCertificate;
+        }
+        private Hashtable GetNameAndProviderCertifiate(string str)
+        {
+
+            Hashtable hashtable = new Hashtable();
+            if (!String.IsNullOrEmpty(str))
+            {
+                if (str.Contains("-"))
+                {
+                    string[] arrStr = str.Trim().Split("|");
+                    if (arrStr.Any() && arrStr.Length > 1)
+                    {
+                        string[] arrStrNameAndProvider = arrStr[1].Trim().Split("-");
+                        if(arrStrNameAndProvider.Any()&& arrStrNameAndProvider.Length > 1)
+                        {
+                            hashtable.Add("Name", arrStrNameAndProvider[0]);
+                            hashtable.Add("Provider", arrStrNameAndProvider[1]);
+                        }
+                    }
+                }
+            }
+            return hashtable;
+        }
+
+        #endregion
+
+        #region Format Date
+        private string GetDate(string str)
+        {
+            string result = null;
+            if (!String.IsNullOrEmpty(str))
+            {
+                if (str.Contains("|"))
+                {
+                    string[] arrStr = str.Split("|");
+                    if (arrStr != null && arrStr.Length > 1)
+                    {
+                        result = arrStr[0].Trim();
+                    }
+                }
+            }
+            return result;
+        }
         private int GetMonth(string str)
         {
             int result = 1;
@@ -292,210 +389,71 @@ namespace WebAPI.Controllers
             return result;
         }
 
-        private DateTime FormatEndDateWorkHistory(string dateStr)
+        private List<DateTime> FormatYearAndMonth(string dateStr)
         {
-            DateTime endDate = new DateTime();
+            List<DateTime> listDateTime = new List<DateTime>();
             if (!String.IsNullOrEmpty(dateStr))
             {
-                string[] arrListStr = dateStr.Split("-");
-                if (!String.IsNullOrEmpty(arrListStr[0]))
+                string[] arrListStr = dateStr.Trim().Split("-");
+                if (!String.IsNullOrEmpty(arrListStr[0]) && !String.IsNullOrEmpty(arrListStr[1]))
                 {
                     if (arrListStr[0].Contains("Now"))
                     {
-                        endDate = DateTime.Now;
+                        listDateTime.Add(DateTime.Now);
                     }
                     else
                     {
-                        string[] arrListStartDate = arrListStr[0].Split(" ");
-                        if (!String.IsNullOrEmpty(arrListStartDate[0]) && !String.IsNullOrEmpty(arrListStartDate[1]))
+                        string[] arrListEndtDate = arrListStr[0].Trim().Split(" ");
+                        if (!String.IsNullOrEmpty(arrListEndtDate[0]) && !String.IsNullOrEmpty(arrListEndtDate[1]))
                         {
-                            int month = GetMonth(arrListStartDate[0]);
-                            int year = Convert.ToInt32(arrListStartDate[1]);
-                            endDate = new DateTime(year, month, 01);
+                            int month = GetMonth(arrListEndtDate[0]);
+                            int year = Convert.ToInt32(arrListEndtDate[1]);
+                            DateTime endDate = new DateTime(year, month, 01);
+                            listDateTime.Add(endDate);
                         }
                     }
-                    
-                }
-            }
-            return endDate;
-        }
-        private DateTime FormatStartDateWorkHistory(string dateStr)
-        {
-            DateTime strartDate = new DateTime();
-            if (!String.IsNullOrEmpty(dateStr))
-            {
-                string[] arrListStr = dateStr.Split("-");
-                if (!String.IsNullOrEmpty(arrListStr[1]))
-                {
-                    string[] arrListStartDate = arrListStr[1].TrimStart().Split(" ");
-                    if(!String.IsNullOrEmpty(arrListStartDate[0]) && !String.IsNullOrEmpty(arrListStartDate[1]))
+                    string[] arrListStarttDate = arrListStr[1].Trim().Split(" ");
+                    if (!String.IsNullOrEmpty(arrListStarttDate[0]) && !String.IsNullOrEmpty(arrListStarttDate[1]))
                     {
-                        int month = GetMonth(arrListStartDate[0]);
-                        int year = Convert.ToInt32(arrListStartDate[1]);
-                        strartDate = new DateTime(year, month, 01);
+                        int month = GetMonth(arrListStarttDate[0]);
+                        int year = Convert.ToInt32(arrListStarttDate[1]);
+                        DateTime startDate = new DateTime(year, month, 01);
+                        listDateTime.Add(startDate);
                     }
                 }
             }
-            return strartDate;
-        }
-        #endregion
-        #region Xu Ly Education
-        private List<EducationInfo> GetListEducation(List<string> list)
-        {
-            List<EducationInfo> listEducation = new List<EducationInfo>();
-            int indexEducation = list.IndexOf("EDUCATION");
-            int indexCertificate = list.IndexOf("CERTIFICATION");
-            for(int i = indexEducation; i < indexCertificate - 2; i=i+2)
-            {
-                EducationInfo educationInfo = new EducationInfo
-                {
-                    StartDate = FormatStartDateEducation(GetDateEducation(list[i + 1])),
-                    EndDate = FormatGetEndDateEducation(GetDateEducation(list[i + 1])),
-                    CollegeName = GetCollegeName(list[i+1]),
-                    Major = GetMajorEducation(list[i + 2])
-                };
-                listEducation.Add(educationInfo);
-            }
-            return listEducation;
+            return listDateTime;
         }
 
-        private DateTime FormatStartDateEducation(string str)
+        public List<DateTime> FormatYear(string str)
         {
-            DateTime startDate = new DateTime();
+            List<DateTime> listDateTime = new List<DateTime>();
             if (!String.IsNullOrEmpty(str))
             {
-                string[] arrStr = str.Split("-");
-                if (arrStr != null && arrStr.Length > 1)
+                if (str.Contains("-"))
                 {
-                    if (!String.IsNullOrEmpty(arrStr[1]))
+                    string[] arrStr = str.Trim().Split("-");
+                    if (arrStr.Any())
                     {
-                        int year = Convert.ToInt32(arrStr[1]);
-                        startDate = new DateTime(year, 01, 01);
-                    } 
-                }
-            }
-            return startDate;
-        }
-
-        private DateTime FormatGetEndDateEducation(string str)
-        {
-            DateTime endDate = new DateTime();
-            if (!String.IsNullOrEmpty(str))
-            {
-                string[] arrStr = str.Split("-");
-                if (arrStr != null && arrStr.Length > 1)
-                {
-                    if (!String.IsNullOrEmpty(arrStr[0]))
-                    {
-                        int year = Convert.ToInt32(arrStr[0]);
-                        endDate = new DateTime(year, 01, 01);
-                    }
-                }
-            }
-            return endDate;
-        }
-
-        private string GetCollegeName(string str)
-        {
-            string result = null;
-            if (!String.IsNullOrEmpty(str))
-            {
-                if (str.Contains("|"))
-                {
-                    string[] arrStr = str.Split("|");
-                    if(arrStr != null && arrStr.Length >1)
-                    {
-                        result = arrStr[1].Trim();
-                    }
-                }
-            }
-            return result;
-        }
-
-        private string GetDateEducation(string str)
-        {
-            string result = null;
-            if (!String.IsNullOrEmpty(str))
-            {
-                if (str.Contains("|"))
-                {
-                    string[] arrStr = str.Split("|");
-                    if (arrStr != null && arrStr.Length > 1)
-                    {
-                        result = arrStr[0].Trim();
-                    }
-                }
-            }
-            return result;
-        }
-
-        private string GetMajorEducation(string str)
-        {
-            string result = null;
-            if (!String.IsNullOrEmpty(str))
-            {
-                if (str.Contains(":"))
-                {
-                    string[] arrStr = str.Split(":");
-                    if (arrStr != null && arrStr.Length > 1)
-                    {
-                        result = arrStr[1].Trim();
-                    }
-                }
-            }
-            return result;
-        }
-        #endregion
-        #region Xu ly Certification
-        private List<CertificateInfo> GetListCertifiate(List<string> list)
-        {
-            List<CertificateInfo> listCertificate = new List<CertificateInfo>();
-            int indexCertificate = list.IndexOf("CERTIFICATION");
-            int indexProject = list.IndexOf("PROJECTS");
-            for(int i = indexCertificate; i < indexProject; i++)
-            {
-                CertificateInfo certificateInfo = new CertificateInfo
-                {
-                    //StartDate
-                };
-                list.Add(certificateInfo);
-            }
-            return listCertificate;
-        }
-        private string GetNameCertifiate(string str)
-        {
-            string result = null;
-            if (!String.IsNullOrEmpty(str))
-            {
-                
-            }
-            return result;
-        }
-        private DateTime GetStartDateCertifiate(string str)
-        {
-            List<DateTime> listDate = new List<DateTime>();
-            if (!String.IsNullOrEmpty(str))
-            {
-                string[] arrStr = str.Split("|");
-                if (arrStr.Any())
-                {
-                    if (arrStr[0].Contains(-))
-                    {
-
-                    }
-                    else
-                    {
-                        if (!String.IsNullOrEmpty(arrStr[0]))
+                        if (!String.IsNullOrEmpty(arrStr[0]) && !String.IsNullOrEmpty(arrStr[1]))
                         {
-                            int year = Convert.ToInt32(arrStr[0]);
-                            DateTime startDate = new DateTime(year, 01, 01);
-                            listDate.Add(startDate);
+                            int yearEndDate = Convert.ToInt32(arrStr[0]);
+                            DateTime endDate = new DateTime(yearEndDate, 01, 01);
+                            listDateTime.Add(endDate);
+                            int yearStartDate = Convert.ToInt32(arrStr[1]);
+                            DateTime startDate = new DateTime(yearStartDate, 01, 01);
+                            listDateTime.Add(startDate);
                         }
                     }
-                    
+                }
+                else
+                {
+                    int year = Convert.ToInt32(str);
+                    DateTime dateTime = new DateTime(year, 01, 01);
+                    listDateTime.Add(dateTime);
                 }
             }
-            return listDate;
+            return listDateTime;
         }
         #endregion
     }
