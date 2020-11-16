@@ -33,13 +33,13 @@ namespace WebAPI.Models
                 switch (Gender)
                 {
                     case Constants.Constant.eGender.Male:
-                        item = "Nam";
+                        item = "Male";
                         break;
                     case Constants.Constant.eGender.Female:
-                        item = "Nữ";
+                        item = "Female";
                         break;
                     case Constants.Constant.eGender.Sexless:
-                        item = "Không rõ giới tính";
+                        item = "Sexless";
                         break;
                     default:
                         break;
