@@ -44,11 +44,37 @@ namespace WebAPI.Controllers
                     var listWorkHistory = GetListWorkHistory(list);
                     var listEducation = GetListEducation(list);
                     var listCertificate = GetListCertifiate(list);
-                    return Ok(listCertificate);
+                    var listProject = GetListProject(list);
+                    return Ok(listCategory);
                 }
             }
         }
-        #region Xu Ly Person
+        public async Task<List<String>> GetInformationCV(IFormFile file)
+        {
+            List<string> list = new List<string>();
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (ExcelPackage package = new ExcelPackage(stream))
+                {
+                    ExcelWorksheet worksheet = package.Workbook.Worksheets["CV-HTV-Nguyen Anh Tu"];
+                    int totalRows = worksheet.Dimension.Rows;
+                    int totalColums = worksheet.Dimension.Columns;
+                    for (int row = 1; row <= 60; row++)
+                    {
+                        for (int col = 1; col <= totalRows; col++)
+                        {
+                            if (!string.IsNullOrEmpty(worksheet.Cells[row, col].Value?.ToString().Trim()))
+                            {
+                                 list.Add(worksheet.Cells[row, col].Value?.ToString().Trim());
+                            }
+                        }
+                    }
+                }
+            }
+            return list;
+        }
+        #region Handling Person
         /// <summary>
         /// Get Person
         /// </summary>
@@ -56,11 +82,12 @@ namespace WebAPI.Controllers
         /// <returns></returns>
         private Person GetPerson(List<string> list)
         {
+            Hashtable hashtable = FormatYear(list[5]);
             Person person = new Person
             {
                 FullName = list[1],
                 Gender = FormatGender(list[3]),
-                YearOfBirth = FormatYear(list[5]).FirstOrDefault(),
+                YearOfBirth = (DateTime?)hashtable["StartDate"],
                 Description = list[7]
             };
             return person;
@@ -94,7 +121,7 @@ namespace WebAPI.Controllers
             return (Constants.Constant.eGender)gerder;
         }
         #endregion
-        #region Xu Ly Skill
+        #region Handling Skill
         /// <summary>
         /// Get List Category
         /// </summary>
@@ -111,8 +138,18 @@ namespace WebAPI.Controllers
                 {
                     Category category = new Category
                     {
-                        Name = list[i]
+                        Name = list[i],
+                        Technologies = new List<Technology>(),
                     };
+                    List<string> listTechnology = SplitTechnology(GetInformation(list[i + 1]));
+                    foreach (var item in listTechnology)
+                    {
+                        Technology technology = new Technology
+                        {
+                            Name = item
+                        };
+                        category.Technologies.Add(technology);
+                    }
                     listCategory.Add(category);
                 }
             }
@@ -174,7 +211,7 @@ namespace WebAPI.Controllers
             return listTechnology;
         }
         #endregion
-        #region Xu Ly WorkHistory
+        #region Handling WorkHistory
         private List<WorkHistoryInfo> GetListWorkHistory(List<string> list)
         {
             List<WorkHistoryInfo> listWorkHistory = new List<WorkHistoryInfo>();
@@ -182,11 +219,12 @@ namespace WebAPI.Controllers
             int indexEducation = list.IndexOf("EDUCATION");
             for (int i = indexWorkHistory + 4; i < indexEducation - 4; i = i + 4)
             {
+                Hashtable hashtable = FormatYearAndMonth(list[i + 2]);
                 WorkHistoryInfo workHistoryInfo = new WorkHistoryInfo
                 {
                     OrderIndex = Convert.ToInt32(list[i + 1]),
-                    StartDate = FormatYearAndMonth(list[i + 2])[1],
-                    EndDate = FormatYearAndMonth(list[i + 2])[0],
+                    StartDate = (DateTime?)hashtable["StartDate"],
+                    EndDate = (DateTime?)hashtable["EndDate"],
                     CompanyName = list[i + 3],
                     Position = list[i + 4]
                 };
@@ -196,34 +234,39 @@ namespace WebAPI.Controllers
 
         }
         #endregion
-        #region Xu Ly Education
+        #region Handling Education
         private List<EducationInfo> GetListEducation(List<string> list)
         {
             List<EducationInfo> listEducation = new List<EducationInfo>();
             int indexEducation = list.IndexOf("EDUCATION");
             int indexCertificate = list.IndexOf("CERTIFICATION");
+            int index = 0;
             for (int i = indexEducation; i < indexCertificate - 2; i = i + 2)
             {
+                index++;
                 EducationInfo educationInfo = new EducationInfo();
                 string dateEducation = GetDate(list[i + 1]);
-                if (FormatYear(dateEducation).Count > 1)
+                Hashtable hashtable = FormatYear(dateEducation);
+                if (hashtable.Count > 1)
                 {
                     educationInfo = new EducationInfo
                     {
-                        StartDate = FormatYear(dateEducation)[1],
-                        EndDate = FormatYear(dateEducation)[0],
+                        StartDate = (DateTime)hashtable["StartDate"],
+                        EndDate = (DateTime)hashtable["EndDate"],
                         CollegeName = GetCollegeName(list[i + 1]),
-                        Major = GetMajorEducation(list[i + 2])
+                        Major = GetInformation(list[i + 2]),
+                        OrderIndex = index
                     };
                 }
                 else
                 {
                     educationInfo = new EducationInfo
                     {
-                        StartDate = FormatYear(dateEducation)[0],
+                        StartDate = (DateTime)hashtable["StartDate"],
                         EndDate = null,
                         CollegeName = GetCollegeName(list[i + 1]),
-                        Major = GetMajorEducation(list[i + 2])
+                        Major = GetInformation(list[i + 2]),
+                        OrderIndex = index
                     };
                 }
                 listEducation.Add(educationInfo);
@@ -247,56 +290,44 @@ namespace WebAPI.Controllers
             }
             return result;
         }
-
-        private string GetMajorEducation(string str)
-        {
-            string result = null;
-            if (!String.IsNullOrEmpty(str))
-            {
-                if (str.Contains(":"))
-                {
-                    string[] arrStr = str.Split(":");
-                    if (arrStr != null && arrStr.Length > 1)
-                    {
-                        result = arrStr[1].Trim();
-                    }
-                }
-            }
-            return result;
-        }
         #endregion
-        #region Xu ly Certification
+        #region Handling Certification
         private List<CertificateInfo> GetListCertifiate(List<string> list)
         {
             List<CertificateInfo> listCertificate = new List<CertificateInfo>();
             int indexCertificate = list.IndexOf("CERTIFICATION");
             int indexProject = list.IndexOf("PROJECTS");
-            for (int i = indexCertificate+1; i < indexProject; i++)
+            int index = 0;
+            for (int i = indexCertificate + 1; i < indexProject; i++)
             {
+                index++;
                 CertificateInfo certificateInfo = new CertificateInfo();
                 string certificateStr = list[i];
                 string dateCertificate = GetDate(certificateStr);
-                if (FormatYear(dateCertificate).Count > 1)
+                Hashtable hashtable = FormatYear(dateCertificate);
+                if (hashtable.Count > 1)
                 {
                     certificateInfo = new CertificateInfo
                     {
-                        StartDate = FormatYear(dateCertificate)[1],
-                        EndDate = FormatYear(dateCertificate)[0],
+                        StartDate = (DateTime)hashtable["StartDate"],
+                        EndDate = (DateTime?)hashtable["EndDate"],
                         Name = GetNameAndProviderCertifiate(certificateStr)["Name"].ToString(),
-                        Provider = GetNameAndProviderCertifiate(certificateStr)["Provider"].ToString()
+                        Provider = GetNameAndProviderCertifiate(certificateStr)["Provider"].ToString(),
+                        OrderIndex = index
                     };
                 }
                 else
                 {
                     certificateInfo = new CertificateInfo
                     {
-                        StartDate = FormatYear(dateCertificate).FirstOrDefault(),
+                        StartDate = (DateTime)hashtable["StartDate"],
                         EndDate = null,
                         Name = GetNameAndProviderCertifiate(certificateStr)["Name"].ToString(),
-                        Provider = GetNameAndProviderCertifiate(certificateStr)["Provider"].ToString()
+                        Provider = GetNameAndProviderCertifiate(certificateStr)["Provider"].ToString(),
+                        OrderIndex = index
                     };
                 }
-              listCertificate.Add(certificateInfo);
+                listCertificate.Add(certificateInfo);
             }
             return listCertificate;
         }
@@ -312,7 +343,7 @@ namespace WebAPI.Controllers
                     if (arrStr.Any() && arrStr.Length > 1)
                     {
                         string[] arrStrNameAndProvider = arrStr[1].Trim().Split("-");
-                        if(arrStrNameAndProvider.Any()&& arrStrNameAndProvider.Length > 1)
+                        if (arrStrNameAndProvider.Any() && arrStrNameAndProvider.Length > 1)
                         {
                             hashtable.Add("Name", arrStrNameAndProvider[0]);
                             hashtable.Add("Provider", arrStrNameAndProvider[1]);
@@ -324,8 +355,43 @@ namespace WebAPI.Controllers
         }
 
         #endregion
-
-        #region Format Date
+        #region Handling Project
+        public List<Project> GetListProject(List<string> list)
+        {
+            int indexProject = list.IndexOf("PROJECTS");
+            int indexEnd = list.Count();
+            List<Project> listProject = new List<Project>();
+            for (int i = indexProject + 4; i < indexEnd - 8; i = i + 8)
+            {
+                string str = list[i + 2];
+                Hashtable hashDate = FormatYearAndMonth(list[i + 2]);
+                Project project = new Project
+                {
+                    OrderIndex = (String.IsNullOrEmpty(list[i + 1])) ? 0 : Convert.ToInt32(list[i + 1]),
+                    StartDate = (DateTime)hashDate["StartDate"],
+                    EndDate = (DateTime)hashDate["EndDate"],
+                    Position = list[i + 3],
+                    Name = list[i + 4],
+                    Description = GetInformation(list[i + 5]),
+                    Responsibilities = GetInformation(list[i + 6]),
+                    TeamSize = (String.IsNullOrEmpty(GetInformation((list[i + 7])))) ? 1 : Convert.ToInt32(GetInformation(list[i + 7])),
+                    Technologies = new List<Technology>()
+                };
+                List<string> listTechnology = SplitTechnology(GetInformation(list[i + 8]));
+                foreach(var item  in listTechnology)
+                {
+                    Technology technology = new Technology
+                    {
+                        Name = item
+                    };
+                    project.Technologies.Add(technology);
+                }
+                listProject.Add(project);
+            }
+            return listProject;
+        }
+        #endregion
+        #region Handling Date
         private string GetDate(string str)
         {
             string result = null;
@@ -389,9 +455,9 @@ namespace WebAPI.Controllers
             return result;
         }
 
-        private List<DateTime> FormatYearAndMonth(string dateStr)
+        private Hashtable FormatYearAndMonth(string dateStr)
         {
-            List<DateTime> listDateTime = new List<DateTime>();
+            Hashtable hashtable = new Hashtable();
             if (!String.IsNullOrEmpty(dateStr))
             {
                 string[] arrListStr = dateStr.Trim().Split("-");
@@ -399,7 +465,7 @@ namespace WebAPI.Controllers
                 {
                     if (arrListStr[0].Contains("Now"))
                     {
-                        listDateTime.Add(DateTime.Now);
+                        hashtable.Add("EndDate", DateTime.Now);
                     }
                     else
                     {
@@ -409,7 +475,7 @@ namespace WebAPI.Controllers
                             int month = GetMonth(arrListEndtDate[0]);
                             int year = Convert.ToInt32(arrListEndtDate[1]);
                             DateTime endDate = new DateTime(year, month, 01);
-                            listDateTime.Add(endDate);
+                            hashtable.Add("EndDate", endDate);
                         }
                     }
                     string[] arrListStarttDate = arrListStr[1].Trim().Split(" ");
@@ -418,16 +484,16 @@ namespace WebAPI.Controllers
                         int month = GetMonth(arrListStarttDate[0]);
                         int year = Convert.ToInt32(arrListStarttDate[1]);
                         DateTime startDate = new DateTime(year, month, 01);
-                        listDateTime.Add(startDate);
+                        hashtable.Add("StartDate", startDate);
                     }
                 }
             }
-            return listDateTime;
+            return hashtable;
         }
 
-        public List<DateTime> FormatYear(string str)
+        public Hashtable FormatYear(string str)
         {
-            List<DateTime> listDateTime = new List<DateTime>();
+            Hashtable hashtable = new Hashtable();
             if (!String.IsNullOrEmpty(str))
             {
                 if (str.Contains("-"))
@@ -439,10 +505,10 @@ namespace WebAPI.Controllers
                         {
                             int yearEndDate = Convert.ToInt32(arrStr[0]);
                             DateTime endDate = new DateTime(yearEndDate, 01, 01);
-                            listDateTime.Add(endDate);
+                            hashtable.Add("EndDate", endDate);
                             int yearStartDate = Convert.ToInt32(arrStr[1]);
                             DateTime startDate = new DateTime(yearStartDate, 01, 01);
-                            listDateTime.Add(startDate);
+                            hashtable.Add("StartDate", startDate);
                         }
                     }
                 }
@@ -450,10 +516,28 @@ namespace WebAPI.Controllers
                 {
                     int year = Convert.ToInt32(str);
                     DateTime dateTime = new DateTime(year, 01, 01);
-                    listDateTime.Add(dateTime);
+                    hashtable.Add("StartDate", dateTime);
                 }
             }
-            return listDateTime;
+            return hashtable;
+        }
+        #endregion
+        #region Handling Information
+        public string GetInformation(string str)
+        {
+            string result = null;
+            if (!String.IsNullOrEmpty(str))
+            {
+                if (str.Contains(":"))
+                {
+                    string[] arrStr = str.Trim().Split(":");
+                    if (arrStr.Length > 1)
+                    {
+                        result = (String.IsNullOrEmpty(arrStr[1])) ? null : arrStr[1].Trim();
+                    }
+                }
+            }
+            return result;
         }
         #endregion
     }
