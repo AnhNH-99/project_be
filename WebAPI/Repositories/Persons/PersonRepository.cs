@@ -136,7 +136,7 @@ namespace WebAPI.Repositories.Persons
                     location = entity.Location,
                     avatar = entity.Avatar,
                     description = entity.Description,
-                    phone = Convert.ToInt32(entity.Phone),
+                    phone = entity.Phone,
                     yearOfBirth = entity.YearOfBirth.ToString(),
                     gender = entity.Gender,
                     status = entity.Status,

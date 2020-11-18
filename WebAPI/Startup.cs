@@ -11,12 +11,16 @@ using WebAPI.Helpers;
 using WebAPI.Models;
 using WebAPI.Repositories.Accounts;
 using WebAPI.Repositories.Categories;
+using WebAPI.Repositories.Persons;
 using WebAPI.Repositories.Skills;
 using WebAPI.Repositories.Technologies;
+using WebAPI.Repositories.WorkHistories;
 using WebAPI.Services.Accounts;
 using WebAPI.Services.Categories;
+using WebAPI.Services.Persons;
 using WebAPI.Services.Skills;
 using WebAPI.Services.Technologies;
+using WebAPI.Services.WorkHistories;
 
 namespace WebAPI
 {
@@ -71,7 +75,10 @@ namespace WebAPI
             services.AddScoped(typeof(ITechnologyService), typeof(TechnologyService));
             services.AddScoped<ISkillRepository>(x => new SkillRepository(Configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped(typeof(ISkillService), typeof(SkillService));
-
+            services.AddScoped<IPersonRepository>(x => new PersonRepository(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddScoped(typeof(IPersonService), typeof(PersonService));
+            services.AddScoped<IWorkHistoryRepository>(x => new WorkHistoryRepository(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddScoped(typeof(IWorkHistoryService), typeof(WorkHistoryService));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
